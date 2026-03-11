@@ -1,0 +1,383 @@
+    local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/xHeptc/Kavo-UI-Library/main/source.lua"))()
+    local Window = Library.CreateLib("Gohken Hub", "Midnight")
+
+    -- [[ สร้างหน้าต่างและเซคชั่น ]] --
+    local Tab1 = Window:NewTab("ตัวละคร")
+    local PowerSection = Tab1:NewSection("พลังวิเศษ")
+
+
+
+    -- [[ 1. ระบบบิน (Fly) ]] --
+    PowerSection:NewToggle("บิน (Fly)", "เปิดสคริปต์บินจาก GitHub", function(state)
+        if state then
+            loadstring(game:HttpGet("https://raw.githubusercontent.com/koken333/eiei/refs/heads/main/README.md"))()
+        else
+            local flyGui = game.CoreGui:FindFirstChild("FlyGui") or game.Players.LocalPlayer.PlayerGui:FindFirstChild("FlyGui")
+            if flyGui then flyGui:Destroy() end
+            
+            local root = game.Players.LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+            if root then
+                for _, child in pairs(root:GetChildren()) do
+                    if child:IsA("BodyVelocity") or child:IsA("BodyGyro") then child:Destroy() end
+                end
+            end
+        end
+    end)
+
+    -- [[ 2. ระบบ Noclip ]] --
+    _G.NoclipEnabled = false
+    PowerSection:NewToggle("เดินทะลุ (Noclip)", "เดินทะลุกำแพง", function(state)
+        _G.NoclipEnabled = state
+        game:GetService("RunService").Stepped:Connect(function()
+            if _G.NoclipEnabled then
+                local char = game.Players.LocalPlayer.Character
+                if char then
+                    for _, part in pairs(char:GetDescendants()) do
+                        if part:IsA("BasePart") then part.CanCollide = false end
+                    end
+                end
+            end
+        end)
+    end)
+
+
+    -- [[ 3. ระบบ WalkSpeed (จดจำค่าเดิม) ]] --
+    local PowerSection = Tab1:NewSection("ความเร็ว")
+    _G.WalkSpeedValue = 50
+    local OriginalSpeed = nil
+
+    PowerSection:NewSlider("ระดับความเร็วเดิน", "ปกติคือ 16", 500, 0, function(s)
+        _G.WalkSpeedValue = s
+    end)
+
+    PowerSection:NewToggle("ล็อกความเร็วเดิน", "เปิดเพื่อวิ่งเร็ว / ปิดเพื่อกลับค่าเดิม", function(state)
+        _G.SpeedEnabled = state
+        local humanoid = game.Players.LocalPlayer.Character and game.Players.LocalPlayer.Character:FindFirstChild("Humanoid")
+        if state then
+            if humanoid and OriginalSpeed == nil then OriginalSpeed = humanoid.WalkSpeed end
+            task.spawn(function()
+                while _G.SpeedEnabled do
+                    if humanoid then humanoid.WalkSpeed = _G.WalkSpeedValue end
+                    task.wait(0.1)
+                end
+                if humanoid and OriginalSpeed ~= nil then humanoid.WalkSpeed = OriginalSpeed end
+            end)
+        end
+    end)
+
+    -- [[ 4. ระบบ Jump Power (แรงกระโดด) ]] --
+    local PowerSection = Tab1:NewSection("เเรงกระโดด")
+    _G.JumpValue = 50
+    local OriginalJump = nil
+
+    PowerSection:NewSlider("ระดับแรงกระโดด", "ปกติคือ 50", 500, 0, function(s)
+        _G.JumpValue = s
+    end)
+
+    PowerSection:NewToggle("ล็อกแรงกระโดด", "เปิดเพื่อกระโดดสูง / ปิดเพื่อกลับค่าเดิม", function(state)
+        _G.JumpEnabled = state
+        local humanoid = game.Players.LocalPlayer.Character and game.Players.LocalPlayer.Character:FindFirstChild("Humanoid")
+        if state then
+            if humanoid and OriginalJump == nil then OriginalJump = humanoid.JumpPower end
+            task.spawn(function()
+                while _G.JumpEnabled do
+                    if humanoid then
+                        humanoid.UseJumpPower = true
+                        humanoid.JumpPower = _G.JumpValue
+                    end
+                    task.wait(0.1)
+                end
+                if humanoid and OriginalJump ~= nil then humanoid.JumpPower = OriginalJump end
+            end)
+        end
+    end)
+
+    -- [[ 5. ฟังก์ชันเสริม ]] --
+    PowerSection:NewToggle("กระโดดไม่จำกัด", "Infinite Jump", function(state)
+        _G.InfJump = state
+        game:GetService("UserInputService").JumpRequest:Connect(function()
+            if _G.InfJump then
+                game.Players.LocalPlayer.Character:FindFirstChildOfClass("Humanoid"):ChangeState("Jumping")
+            end
+        end)
+    end)
+
+    PowerSection:NewButton("เปิดไฟทั้งแมพ (FullBright)", "ทำให้สว่าง", function()
+        game:GetService("Lighting").Brightness = 2
+        game:GetService("Lighting").ClockTime = 14
+        game:GetService("Lighting").FogEnd = 100000
+        game:GetService("Lighting").GlobalShadows = false
+    end)
+
+    -------------------------  [ตัวลุกตลอดเวลา]  ----------------------
+
+    -- [[ CONFIG ]] --
+    local AntiRagdollActive = true
+
+    local Player = game.Players.LocalPlayer
+    local RunService = game:GetService("RunService")
+
+    RunService.Stepped:Connect(function()
+        if AntiRagdollActive then
+            local char = Player.Character
+            if char then
+                -- 1. บังคับ Humanoid ให้ตื่นตลอดเวลา
+                local hum = char:FindFirstChildOfClass("Humanoid")
+                if hum then
+                    hum.PlatformStand = false
+                    hum:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, false)
+                    hum:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false)
+                    
+                    -- ถ้าเผลอล้ม ให้ลุกทันทีในเฟรมนั้นเลย
+                    if hum:GetState() == Enum.HumanoidStateType.Ragdoll or hum:GetState() == Enum.HumanoidStateType.FallingDown then
+                        hum:ChangeState(Enum.HumanoidStateType.GettingUp)
+                    end
+                end
+                
+                -- 2. ดักคอและข้อต่อ (ป้องกันหัวหลุดหรือตัวพับ)
+                for _, v in pairs(char:GetDescendants()) do
+                    if v:IsA("BallSocketConstraint") or v:IsA("HingeConstraint") then
+                        v.Enabled = false -- ปิดข้อต่อที่ทำให้ตัวอ่อน
+                    end
+                end
+            end
+        end
+    end)
+
+
+    ----------------------------------------  ESP    ----------------------------------------------------------------
+
+    local _G = {
+        Master = false,
+        Name = false,
+        Dist = false,
+        HealthBar = false,
+        Size = 16,
+        BoxColor = Color3.fromRGB(255, 0, 0),
+        NameColor = Color3.fromRGB(255, 255, 255),
+        DistColor = Color3.fromRGB(255, 255, 0)
+    }
+
+    local Players = game:GetService("Players")
+    local RunService = game:GetService("RunService")
+    local lp = Players.LocalPlayer
+    local cam = workspace.CurrentCamera
+
+    local ESP_Data = {}
+
+    -- ฟังก์ชันสร้าง Drawing
+    local function CreateESP(player)
+        local data = {
+            Box = Drawing.new("Square"),
+            NameText = Drawing.new("Text"),
+            DistText = Drawing.new("Text"),
+            HealthBarOutline = Drawing.new("Square"),
+            HealthBar = Drawing.new("Square")
+        }
+        
+        data.Box.Thickness = 1
+        data.Box.Filled = false
+        data.NameText.Outline = true
+        data.NameText.Center = true
+        data.DistText.Outline = true
+        data.DistText.Center = true
+        data.HealthBarOutline.Color = Color3.new(0, 0, 0)
+        data.HealthBarOutline.Filled = true
+        data.HealthBar.Filled = true
+        
+        ESP_Data[player] = data
+    end
+
+    -- UI Setup
+    local Tab = Window:NewTab("ระบบ ESP")
+    local Sec = Tab:NewSection("ตั้งค่าการมองเห็น")
+
+    Sec:NewToggle("เปิดใช้งาน ESP", "เปิด/ปิด กรอบตัวละคร", function(s) _G.Master = s end)
+    Sec:NewToggle("แสดงชื่อ", "โชว์ชื่อผู้เล่น", function(s) _G.Name = s end)
+    Sec:NewToggle("แสดงระยะทาง", "โชว์ระยะห่าง (เมตร)", function(s) _G.Dist = s end)
+    Sec:NewToggle("แสดงแถบเลือด", "โชว์เลือดข้างตัว", function(s) _G.HealthBar = s end)
+    Sec:NewSlider("ขนาดฟอนต์ทั้งหมด", "ปรับขนาดตัวอักษร", 30, 10, function(s) _G.Size = s end)
+
+    local ColorSec = Window:NewTab("ปรับแต่งสี")
+    local ColorSection = ColorSec:NewSection("เลือกสีสำหรับศัตรู")
+
+    ColorSection:NewColorPicker("สีกรอบ (ศัตรู)", "เลือกสีกรอบ", _G.BoxColor, function(color) _G.BoxColor = color end)
+    ColorSection:NewColorPicker("สีชื่อ (ศัตรู)", "เลือกสีชื่อ", _G.NameColor, function(color) _G.NameColor = color end)
+    ColorSection:NewColorPicker("สีระยะทาง", "เลือกสีระยะ", _G.DistColor, function(color) _G.DistColor = color end)
+
+    -- Loop วาดหน้าจอ
+    RunService.RenderStepped:Connect(function()
+        for _, p in pairs(Players:GetPlayers()) do
+            if p == lp then continue end
+            
+            if not ESP_Data[p] then CreateESP(p) end
+            local data = ESP_Data[p]
+            local char = p.Character
+            local hrp = char and char:FindFirstChild("HumanoidRootPart")
+            local hum = char and char:FindFirstChild("Humanoid")
+            
+            if _G.Master and hrp and hum and hum.Health > 0 then
+                local pos, onscreen = cam:WorldToViewportPoint(hrp.Position)
+                
+                if onscreen then
+                    local sizeX = 2000 / pos.Z
+                    local sizeY = 3000 / pos.Z
+                    local boxPos = Vector2.new(pos.X - sizeX/2, pos.Y - sizeY/2)
+                    
+                    -- เช็คทีม (เพื่อนสีเขียว / ศัตรูสีที่เลือก)
+                    local isTeam = (p.Team == lp.Team and p.Team ~= nil)
+                    local currentBoxColor = isTeam and Color3.fromRGB(0, 255, 0) or _G.BoxColor
+                    local currentNameColor = isTeam and Color3.fromRGB(0, 255, 0) or _G.NameColor
+
+                    -- 1. วาดกรอบ
+                    data.Box.Size = Vector2.new(sizeX, sizeY)
+                    data.Box.Position = boxPos
+                    data.Box.Color = currentBoxColor
+                    data.Box.Visible = true
+                    
+                    -- 2. วาดชื่อ (ขยับสูงขึ้นเพื่อหลบระยะห่าง)
+                    if _G.Name then
+                        data.NameText.Text = p.Name
+                        data.NameText.Size = _G.Size
+                        data.NameText.Color = currentNameColor
+                        local yNameOffset = _G.Dist and (_G.Size + 15) or 5
+                        data.NameText.Position = Vector2.new(pos.X, boxPos.Y - yNameOffset)
+                        data.NameText.Visible = true
+                    else
+                        data.NameText.Visible = false
+                    end
+
+                    -- 3. วาดระยะห่าง (ตัวใหญ่เท่าชื่อ และอยู่เหนือกรอบนิดเดียว)
+                    if _G.Dist then
+                        local d = math.floor((hrp.Position - lp.Character.HumanoidRootPart.Position).Magnitude)
+                        data.DistText.Text = "[" .. d .. "m]"
+                        data.DistText.Size = _G.Size -- ปรับให้ใหญ่เท่าชื่อแล้ว
+                        data.DistText.Color = _G.DistColor
+                        data.DistText.Position = Vector2.new(pos.X, boxPos.Y - 12) -- วางห่างจากขอบบนกรอบนิดหน่อย
+                        data.DistText.Visible = true
+                    else
+                        data.DistText.Visible = false
+                    end
+                    
+                    -- 4. วาด Health Bar
+                    if _G.HealthBar then
+                        local barHeight = sizeY
+                        local healthPercent = hum.Health / hum.MaxHealth
+                        data.HealthBarOutline.Size = Vector2.new(4, barHeight + 2)
+                        data.HealthBarOutline.Position = Vector2.new(boxPos.X - 6, boxPos.Y - 1)
+                        data.HealthBarOutline.Visible = true
+                        
+                        data.HealthBar.Size = Vector2.new(2, barHeight * healthPercent)
+                        data.HealthBar.Position = Vector2.new(boxPos.X - 5, boxPos.Y + (barHeight * (1 - healthPercent)))
+                        data.HealthBar.Color = Color3.fromHSV(healthPercent * 0.3, 1, 1)
+                        data.HealthBar.Visible = true
+                    else
+                        data.HealthBarOutline.Visible = false
+                        data.HealthBar.Visible = false
+                    end
+                else
+                    data.Box.Visible = false
+                    data.NameText.Visible = false
+                    data.DistText.Visible = false
+                    data.HealthBarOutline.Visible = false
+                    data.HealthBar.Visible = false
+                end
+            else
+                data.Box.Visible = false
+                data.NameText.Visible = false
+                data.DistText.Visible = false
+                data.HealthBarOutline.Visible = false
+                data.HealthBar.Visible = false
+            end
+        end
+    end)
+
+    -- Cleanup
+    Players.PlayerRemoving:Connect(function(p)
+        if ESP_Data[p] then
+            for _, obj in pairs(ESP_Data[p]) do obj:Remove() end
+            ESP_Data[p] = nil
+        end
+    end)
+
+    ------------  [เทเลพอต]  ----------
+    local TPTab = Window:NewTab("เทเลพอต") -- เปลี่ยนชื่อ Tab ให้ดูรู้เรื่อง
+    local TPSection = TPTab:NewSection("การควบคุมเมนู")
+    -- [[ 2. สร้าง Dropdown รายชื่อผู้เล่น ]] --
+    local PlayerList = {}
+    for _, v in pairs(game.Players:GetPlayers()) do
+        if v ~= game.Players.LocalPlayer then
+            table.insert(PlayerList, v.Name)
+        end
+    end
+
+    local SelectedPlayer = nil
+
+    local PlayerDropdown = TPSection:NewDropdown("เลือกผู้เล่น", "เลือกชื่อคนที่นายจะไปหา", PlayerList, function(currentOption)
+        SelectedPlayer = currentOption
+    end)
+    -- [[ 3. ปุ่มกดเพื่อวาร์ป ]] --
+    TPSection:NewButton("วาร์ปไปหาทันที", "วาร์ปไปข้างหลังผู้เล่นที่เลือก", function()
+        if SelectedPlayer then
+            local targetPlayer = game.Players:FindFirstChild(SelectedPlayer)
+            if targetPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart") then
+                local p1 = game.Players.LocalPlayer.Character.HumanoidRootPart
+                local p2 = targetPlayer.Character.HumanoidRootPart
+                -- วาร์ปไปพิกัดเดียวกับเขา (บวกระยะเยื้องนิดหน่อยจะได้ไม่ซ้อนกัน)
+                p1.CFrame = p2.CFrame * CFrame.new(0, 0, 3) 
+                print("วาร์ปไปหา " .. SelectedPlayer .. " แล้ว!")
+            else
+                print("หาตัวผู้เล่นไม่เจอ หรือเขาอาจจะตายอยู่")
+            end
+        else
+            print("ยังไม่ได้เลือกชื่อใครเลย!")
+        end
+    end)
+
+    -- [[ 4. ปุ่มรีเฟรชรายชื่อ (สำคัญมาก) ]] --
+    TPSection:NewButton("รีเฟรชรายชื่อคนในเซิร์ฟ", "กดเมื่อมีคนเข้าหรือออกเกม", function()
+        local newList = {}
+        for _, v in pairs(game.Players:GetPlayers()) do
+            if v ~= game.Players.LocalPlayer then
+                table.insert(newList, v.Name)
+            end
+        end
+        PlayerDropdown:Refresh(newList)
+        print("อัปเดตรายชื่อผู้เล่นปัจจุบันแล้ว")
+    end)
+
+    local IsSpectating = false
+
+    TPSection:NewButton("ส่องจอผู้เล่น", "ดูหน้าจอของคนที่เลือก", function()
+        if SelectedPlayer then
+            local targetPlayer = game.Players:FindFirstChild(SelectedPlayer)
+            if targetPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("Humanoid") then
+                -- ปรับกล้องไปหาคนนั้น
+                workspace.CurrentCamera.CameraSubject = targetPlayer.Character.Humanoid
+                IsSpectating = true
+                print("กำลังส่องจอ: " .. SelectedPlayer)
+            else
+                print("ไม่สามารถส่องได้ (อาจจะไม่มีตัวละคร)")
+            end
+        else
+            print("ยังไม่ได้เลือกชื่อใครเลย!")
+        end
+    end)
+
+    TPSection:NewButton("กลับมาดูตัวเอง", "ยกเลิกการส่องเเละกลับมาดูตัวเอง", function()
+        local lp = game.Players.LocalPlayer
+        if lp.Character and lp.Character:FindFirstChild("Humanoid") then
+            workspace.CurrentCamera.CameraSubject = lp.Character.Humanoid
+            IsSpectating = false
+            print("กลับมาที่ตัวเองแล้ว")
+        end
+    end)
+
+    -- [[ ส่วนนี้คืออันที่คุณอยากเอามาต่อท้าย ]] --
+
+    local UITab = Window:NewTab("ตั้งค่า UI") -- เปลี่ยนชื่อ Tab ให้ดูรู้เรื่อง
+    local UISection = UITab:NewSection("การควบคุมเมนู")
+
+    UISection:NewKeybind("ปิด/เปิดเมนู", "กดปุ่ม M เพื่อซ่อนหรือแสดง UI", Enum.KeyCode.M, function()
+        Library:ToggleUI()
+    end)
