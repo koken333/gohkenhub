@@ -1,54 +1,64 @@
 local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/xHeptc/Kavo-UI-Library/main/source.lua"))()
--- เลือก Theme "Serpent" เพราะดูสะอาดตาและไม่กินทรัพยากร
-local Window = Library.CreateLib("Driving Empire: Light Hub", "Serpent")
+local Window = Library.CreateLib("Driving Empire: Highway Farm", "Serpent")
 
--- สร้าง Tab หลัก
-local Main = Window:NewTab("Vehicle")
-local Section = Main:NewSection("Engine Mods (Kavo)")
+-- [ Tab: AFK Farm ]
+local FarmTab = Window:NewTab("AFK Farm")
+local Section = FarmTab:NewSection("Highway Loop (AFK)")
 
-local SpeedValue = 16 -- ค่าความเร็วเริ่มต้น
+-- พิกัดที่คุณให้มา
+local Pos1 = Vector3.new(-1386, 22, -2589)
+local Pos2 = Vector3.new(-6742, 30, -2794)
 
--- ตัวเลื่อนปรับความเร็ว (Slider)
-Section:NewSlider("Custom Max Speed", "ปรับความเร็วรถ (แนะนำ 100-200)", 500, 16, function(s)
-    SpeedValue = s
+local FarmSpeed = 200 -- ความเร็วแนะนำสำหรับทางหลวง
+
+Section:NewSlider("Farm Speed", "ปรับความเร็ว (แนะนำ 200-250)", 500, 50, function(s)
+    FarmSpeed = s
 end)
 
--- ปุ่มเปิด/ปิดความเร็ว (Toggle)
-Section:NewToggle("Enable Turbo", "ทำให้รถพุ่งไปข้างหน้าตามค่าที่ตั้งไว้", function(state)
-    _G.SpeedHack = state
+Section:NewToggle("Start Highway Farm", "วิ่งวนลูประหว่าง 2 พิกัด", function(state)
+    _G.HighwayFarm = state
     task.spawn(function()
-        while _G.SpeedHack do
-            task.wait(0.1)
+        while _G.HighwayFarm do
             pcall(function()
-                local lp = game.Players.LocalPlayer
-                local char = lp.Character
-                if char and char:FindFirstChild("Humanoid") then
-                    local seat = char.Humanoid.SeatPart
-                    if seat and seat:IsA("VehicleSeat") then
-                        local vehicle = seat.Parent
-                        -- เพิ่มแรงพุ่งให้ตัวรถ
-                        vehicle.PrimaryPart.Velocity = vehicle.PrimaryPart.CFrame.LookVector * SpeedValue
+                local char = game.Players.LocalPlayer.Character
+                local seat = char.Humanoid.SeatPart
+                if seat and seat:IsA("VehicleSeat") then
+                    local car = seat.Parent
+                    local root = car.PrimaryPart
+                    local targets = {Pos1, Pos2}
+
+                    for _, target in ipairs(targets) do
+                        if not _G.HighwayFarm then break end
+                        
+                        -- วิ่งไปจนกว่าจะถึงจุดหมาย (ระยะห่างน้อยกว่า 50 studs)
+                        while (root.Position - target).Magnitude > 50 and _G.HighwayFarm do
+                            task.wait()
+                            
+                            -- หันหน้าไปหาจุดหมาย
+                            root.CFrame = CFrame.new(root.Position, Vector3.new(target.X, root.Position.Y, target.Z))
+                            
+                            -- แรงส่งไปข้างหน้า + แรงกดติดพื้น (กันเหินเวลาลงเนิน)
+                            root.Velocity = root.CFrame.LookVector * FarmSpeed + Vector3.new(0, -60, 0)
+                            
+                            -- ล็อครถไม่ให้คว่ำ
+                            root.RotVelocity = Vector3.new(0, 0, 0)
+                        end
                     end
                 end
             end)
+            task.wait(0.1)
         end
     end)
 end)
 
--- ปุ่มเบรกกะทันหัน (Button)
-Section:NewButton("Instant Brake", "หยุดรถทันที (กันรถกระเด็น)", function()
+Section:NewButton("Teleport to Highway", "วาร์ปไปจุดเริ่มทันที", function()
     pcall(function()
-        local seat = game.Players.LocalPlayer.Character.Humanoid.SeatPart
-        if seat then
-            seat.Parent.PrimaryPart.Velocity = Vector3.new(0, 0, 0)
-        end
+        game.Players.LocalPlayer.Character.Humanoid.SeatPart.Parent:SetPrimaryPartCFrame(CFrame.new(Pos1 + Vector3.new(0, 5, 0)))
     end)
 end)
 
--- Tab สำหรับตั้งค่าการแสดงผล
+-- [ Settings ]
 local Settings = Window:NewTab("Settings")
-local SetSection = Settings:NewSection("UI Settings")
-
-SetSection:NewKeybind("ปิด/เปิด เมนู", "กดปุ่มเพื่อซ่อนหน้าต่าง", Enum.KeyCode.RightControl, function()
-	Library:ToggleUI()
+Settings:NewSection("UI Controls"):NewKeybind("Hide Menu", "RightControl เพื่อปิด/เปิด", Enum.KeyCode.RightControl, function()
+    Library:ToggleUI()
 end)
