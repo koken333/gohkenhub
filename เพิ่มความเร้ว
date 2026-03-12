@@ -1,0 +1,61 @@
+local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/xHeptc/Kavo-UI-Library/main/source.lua"))()
+local Window = Library.CreateLib("Universal Speed Hub", "Serpent")
+
+local Tab = Window:NewTab("Main")
+local Section = Tab:NewSection("Vehicle Booster")
+
+local SpeedPower = 100 -- ค่าความเร็วเริ่มต้น
+
+Section:NewSlider("Set Speed", "ปรับความเร็วสูงสุด", 500, 16, function(s)
+    SpeedPower = s
+end)
+
+Section:NewToggle("Enable Global Speed", "เปิดปุ๊บ ขี่อะไรก็แรง", function(state)
+    _G.GlobalSpeed = state
+    
+    task.spawn(function()
+        while _G.GlobalSpeed do
+            task.wait(0.1) -- ใช้ wait เพื่อไม่ให้เครื่องค้าง
+            pcall(function()
+                local player = game.Players.LocalPlayer
+                local character = player.Character
+                
+                if character and character:FindFirstChild("Humanoid") then
+                    -- เช็คว่าตัวละครนั่งอยู่บน Seat หรือ VehicleSeat หรือไม่
+                    local seat = character.Humanoid.SeatPart
+                    
+                    if seat then
+                        -- หาตัวรถ (Parent ของ Seat ส่วนใหญ่จะเป็น Model รถ)
+                        local vehicleModel = seat.Parent
+                        
+                        -- ตรวจสอบหาชิ้นส่วนหลัก (RootPart) ของสิ่งที่ขี่
+                        local root = vehicleModel.PrimaryPart or seat
+                        
+                        -- เพิ่มแรงส่ง (Velocity) ตามทิศทางที่หันหน้าไป
+                        -- ใส่แรงกด -50 กันเหินเหมือนเดิม
+                        root.Velocity = root.CFrame.LookVector * SpeedPower + Vector3.new(0, -50, 0)
+                        
+                        -- ล็อคไม่ให้รถคว่ำ
+                        root.RotVelocity = Vector3.new(0, 0, 0)
+                    end
+                end
+            end)
+        end
+    end)
+end)
+
+Section:NewButton("Instant Stop", "หยุดสิ่งที่ขี่ทันที", function()
+    pcall(function()
+        local seat = game.Players.LocalPlayer.Character.Humanoid.SeatPart
+        if seat then
+            seat.Parent.PrimaryPart.Velocity = Vector3.new(0, 0, 0)
+            seat.Parent.PrimaryPart.RotVelocity = Vector3.new(0, 0, 0)
+        end
+    end)
+end)
+
+-- ปุ่มปิด/เปิด UI
+local Settings = Window:NewTab("Settings")
+Settings:NewSection("Controls"):NewKeybind("Toggle Menu", "กดปุ่มเพื่อซ่อน", Enum.KeyCode.RightControl, function()
+    Library:ToggleUI()
+end)
